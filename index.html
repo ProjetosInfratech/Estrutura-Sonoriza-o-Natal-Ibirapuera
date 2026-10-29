@@ -1,0 +1,2134 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>[hidden]{display:none!important}</style></head><body>
+<title>Natal Ibirapuera Sonorização</title>
+<style>
+  :root{
+    --bg:#0a0c0f;
+    --bg-2:#12161c;
+    --panel: rgba(15,18,23,0.66);
+    --panel-line: rgba(255,255,255,0.10);
+    --ink:#eef1f4;
+    --ink-dim:#8d97a3;
+    --ink-faint:#5b6470;
+    --accent:#ff6a2b;
+    --accent-soft: rgba(255,106,43,0.35);
+    --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    --disp: 'Archivo', 'IBM Plex Sans', system-ui, sans-serif;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html, body{
+    background:var(--bg);
+    color:var(--ink);
+    margin:0;
+    font-family:var(--sans);
+    overflow-x:hidden;
+  }
+
+  ::selection{ background:var(--accent); color:#160b05; }
+
+  #scene{
+    position:fixed;
+    inset:0;
+    width:100%;
+    height:100%;
+    display:block;
+    z-index:0;
+    background:var(--bg);
+    cursor:grab;
+    touch-action:pan-y;
+  }
+  #scene.dragging{ cursor:grabbing; }
+
+  .scroll-track{
+    position:relative;
+    z-index:1;
+    height:820vh;
+    pointer-events:none;
+  }
+
+  .hud{
+    position:fixed;
+    inset:0;
+    z-index:5;
+    pointer-events:none;
+    font-family:var(--sans);
+  }
+
+  .topbar{
+    position:absolute;
+    top:0; left:0; right:0;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding: calc(18px + env(safe-area-inset-top,0px)) 24px 0 24px;
+  }
+
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+  }
+
+  .brand b{
+    color:var(--ink);
+    font-weight:600;
+  }
+
+  .brand .dot{
+    width:6px; height:6px; border-radius:50%;
+    background:var(--accent);
+    display:inline-block;
+    box-shadow:0 0 8px 1px var(--accent-soft);
+  }
+
+  .badge{
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    border:1px solid var(--panel-line);
+    padding:6px 10px;
+    border-radius:100px;
+    background:var(--panel);
+    backdrop-filter: blur(6px);
+  }
+
+  .crosshair{
+    position:absolute;
+    top:50%; left:50%;
+    width:22px; height:22px;
+    transform:translate(-50%,-50%);
+    opacity:.28;
+  }
+  .crosshair i{
+    position:absolute; background:var(--ink);
+  }
+  .crosshair i:nth-child(1){ top:50%; left:0; width:100%; height:1px; transform:translateY(-.5px); }
+  .crosshair i:nth-child(2){ left:50%; top:0; height:100%; width:1px; transform:translateX(-.5px); }
+  .crosshair i:nth-child(3){
+    top:50%;left:50%;width:5px;height:5px;border-radius:50%;
+    transform:translate(-50%,-50%);
+    background:transparent; border:1px solid var(--accent);
+  }
+
+  .railnav{
+    position:absolute;
+    right:22px;
+    top:50%;
+    transform:translateY(-50%);
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    pointer-events:auto;
+  }
+
+  .railnav button{
+    all:unset;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    cursor:pointer;
+    justify-content:flex-end;
+  }
+
+  .railnav .rn-num{
+    font-family:var(--mono);
+    font-size:10px;
+    color:var(--ink-faint);
+    letter-spacing:.05em;
+    transition:color .25s ease, transform .25s ease;
+    white-space:nowrap;
+    opacity:0;
+    transform:translateX(4px);
+    transition:opacity .2s ease, transform .2s ease, color .2s ease;
+  }
+
+  .railnav button:hover .rn-num,
+  .railnav button:focus-visible .rn-num{
+    opacity:1;
+    transform:translateX(0);
+  }
+  .railnav button:hover .rn-tick{ opacity:1; }
+
+  .railnav .rn-tick{
+    width:18px; height:2px;
+    background:var(--accent);
+    opacity:.6;
+    transition:all .3s ease;
+  }
+
+  .railnav button.active .rn-tick{
+    width:30px;
+    background:var(--accent);
+    opacity:1;
+    box-shadow:0 0 8px var(--accent-soft);
+  }
+
+  .railnav button.active .rn-num{ color:var(--accent); opacity:1; transform:translateX(0); }
+
+  .railnav button:focus-visible .rn-tick{ outline:2px solid var(--accent); outline-offset:3px; }
+
+  .stepper{ position:absolute; right:16px; pointer-events:auto; }
+  .stepper button{
+    all:unset; box-sizing:border-box; cursor:pointer; width:38px; height:38px; display:grid; place-items:center;
+    border:1px solid var(--panel-line); border-radius:50%; background:var(--panel); backdrop-filter:blur(6px); color:var(--ink);
+    transition:border-color .2s ease, color .2s ease, opacity .2s ease;
+  }
+  .stepper button:hover{ border-color:var(--accent); color:var(--accent); }
+  .stepper button:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .stepper button[disabled]{ opacity:.3; cursor:default; border-color:var(--panel-line); color:var(--ink-dim); }
+
+  .telemetry{
+    position:absolute;
+    left:24px;
+    bottom: calc(24px + env(safe-area-inset-bottom,0px));
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:.06em;
+    color:var(--ink-faint);
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    max-width:60vw;
+  }
+  .telemetry span b{ color:var(--ink-dim); font-weight:500; }
+
+  .progress-rail{
+    position:absolute;
+    left:0; right:0; bottom:0;
+    height:2px;
+    background:var(--panel-line);
+  }
+  .progress-fill{
+    height:100%;
+    width:0%;
+    background:var(--accent);
+    box-shadow:0 0 10px var(--accent-soft);
+  }
+
+  .panels{
+    position:absolute;
+    left:24px;
+    right:24px;
+    bottom:64px;
+    max-width:520px;
+  }
+
+  .panel{
+    position:absolute;
+    left:0; bottom:0;
+    opacity:0;
+    transform:translateY(14px);
+    transition:opacity .35s ease, transform .35s ease;
+    pointer-events:none;
+  }
+  .panel.on{
+    opacity:1;
+    transform:translateY(0);
+  }
+
+  .panel .kicker{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 10px 0;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .panel .kicker::before{
+    content:"";
+    width:26px; height:1px;
+    background:var(--accent);
+    display:inline-block;
+  }
+
+  .panel h2{
+    font-family:var(--disp);
+    font-weight:700;
+    font-size:clamp(24px, 4vw, 38px);
+    line-height:1.05;
+    letter-spacing:-.01em;
+    margin:0 0 12px 0;
+    text-wrap:balance;
+  }
+
+  .panel p{
+    margin:0 0 16px 0;
+    font-size:14.5px;
+    line-height:1.55;
+    color:var(--ink-dim);
+    max-width:46ch;
+  }
+
+  .specs{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px 10px;
+    list-style:none;
+    margin:0; padding:0;
+  }
+  .specs li{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.02em;
+    color:var(--ink-dim);
+    border:1px solid var(--panel-line);
+    background:var(--panel);
+    backdrop-filter: blur(6px);
+    padding:6px 10px;
+    border-radius:6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .specs li b{ color:var(--ink); font-weight:600; }
+
+  @keyframes bob{
+    0%,100%{ transform:translateY(0); opacity:.5; }
+    50%{ transform:translateY(6px); opacity:1; }
+  }
+
+
+  .loader{
+    position:absolute;
+    left:50%; top:50%;
+    transform:translate(-50%, 42px);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    transition:opacity .5s ease;
+  }
+  .loader-bar{
+    width:180px; height:2px;
+    background:var(--panel-line);
+    overflow:hidden;
+  }
+  .loader-bar i{
+    display:block; height:100%; width:0%;
+    background:var(--accent);
+    transition:width .2s linear;
+  }
+  .loader.done{ opacity:0; }
+  .loader.error{ color:var(--accent); text-transform:none; letter-spacing:.02em; max-width:80vw; text-align:center; }
+
+  .topbar-right{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+
+  .stage-toggle{
+    display:inline-flex;
+    padding:2px;
+    border:1px solid var(--panel-line);
+    border-radius:100px;
+    background:var(--panel);
+    backdrop-filter: blur(6px);
+    pointer-events:auto;
+  }
+  .stage-toggle button{
+    all:unset;
+    cursor:pointer;
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    padding:5px 10px;
+    border-radius:100px;
+    transition:color .2s ease, background .2s ease;
+  }
+  .stage-toggle button:hover{ color:var(--ink-dim); }
+  .stage-toggle button[aria-pressed="true"]{ color:var(--ink); background:rgba(255,255,255,0.08); }
+  .stage-toggle button:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+
+  .topbar{ transition:background .4s ease; }
+  .hud{ color:var(--ink); }
+  .panels, .telemetry, .crosshair{ transition:opacity .4s ease; }
+  .hud.in-doc .panels,
+  .hud.in-doc .telemetry,
+  .hud.in-doc .crosshair,
+  .hud.in-doc .loader{ opacity:0 !important; }
+  .hud.in-doc .topbar{
+    background:linear-gradient(to bottom, var(--bg) 55%, transparent);
+    padding-bottom:22px;
+  }
+
+  .cotas{
+    position:relative;
+    z-index:2;
+    background:var(--bg);
+    border-top:1px solid var(--panel-line);
+    padding-block:120px 96px;
+    padding-inline:clamp(16px, 7vw, 88px);
+  }
+  .cotas-inner{
+    max-width:1040px;
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    gap:56px;
+  }
+  .cotas-head .kicker{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 10px 0;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .cotas-head .kicker::before{
+    content:"";
+    width:26px; height:1px;
+    background:var(--accent);
+    display:inline-block;
+  }
+  .cotas-head h2{
+    font-family:var(--disp);
+    font-weight:700;
+    font-size:clamp(24px, 4vw, 38px);
+    line-height:1.05;
+    letter-spacing:-.01em;
+    margin:0 0 12px 0;
+    text-wrap:balance;
+  }
+  .cotas-head p{
+    margin:0;
+    font-size:14.5px;
+    line-height:1.55;
+    color:var(--ink-dim);
+    max-width:60ch;
+  }
+  .sheet{
+    margin:0;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .sheet .paper{
+    all:unset;
+    box-sizing:border-box;
+    position:relative;
+    background:#ffffff;
+    border-radius:4px;
+    padding:clamp(12px, 3vw, 32px);
+    display:flex;
+    justify-content:center;
+    cursor:zoom-in;
+  }
+  .sheet .paper:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
+  .zoom-hint{
+    position:absolute;
+    top:10px; right:10px;
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:#12161c;
+    background:rgba(18,22,28,0.06);
+    border:1px solid rgba(18,22,28,0.18);
+    border-radius:100px;
+    padding:4px 9px;
+    opacity:0;
+    transition:opacity .2s ease;
+  }
+  .sheet .paper:hover .zoom-hint,
+  .sheet .paper:focus-visible .zoom-hint{ opacity:1; }
+  @media (hover: none){ .zoom-hint{ opacity:.8; } }
+
+  .sheet img{
+    display:block;
+    width:auto;
+    height:auto;
+    max-width:100%;
+    max-height:78vh;
+    object-fit:contain;
+  }
+  .legend-wrap{
+    border:1px solid var(--panel-line);
+    border-radius:4px;
+    background:var(--bg-2);
+    overflow-x:auto;
+  }
+  .legend-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:14px;
+    color:var(--ink);
+  }
+  .legend-table th, .legend-table td{
+    padding:11px 16px;
+    text-align:left;
+    border-bottom:1px solid var(--panel-line);
+    vertical-align:middle;
+  }
+  .legend-table thead th{
+    font-family:var(--mono);
+    font-size:10.5px;
+    font-weight:500;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+  }
+  .legend-table tr.grp th{
+    font-family:var(--mono);
+    font-size:10.5px;
+    font-weight:500;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    padding-top:18px;
+  }
+  .legend-table tbody tr:last-child td{ border-bottom:0; }
+  .legend-table .c-sym{ width:150px; }
+  .legend-table .sym{ display:block; }
+  .legend-table .c-spec{ font-family:var(--mono); font-size:12.5px; color:var(--ink-dim); white-space:nowrap; }
+  .legend-table .c-qty{ text-align:right; font-family:var(--mono); font-variant-numeric:tabular-nums; font-weight:600; white-space:nowrap; }
+  .legend-actions{
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-top:6px;
+  }
+  .btn-export{
+    all:unset;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--ink);
+    border:1px solid var(--accent);
+    border-radius:4px;
+    padding:10px 14px;
+    transition:background .2s ease;
+  }
+  .btn-export:hover{ background:var(--accent-soft); }
+  .btn-export:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .btn-export[aria-busy="true"]{ opacity:.6; cursor:progress; }
+  .export-status{ font-family:var(--mono); font-size:11px; color:var(--ink-dim); }
+  .sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  .legend-table .spec-inline{ display:none; }
+  @media (max-width: 560px){
+    .legend-table th, .legend-table td{ padding:10px 10px; }
+    .legend-table .c-sym{ width:1%; }
+    .legend-table .sym{ max-width:64px; height:auto; }
+    .legend-table{ font-size:13px; }
+    .legend-table .c-spec{ display:none; }
+    .legend-table .spec-inline{ display:block; margin-top:2px; font-family:var(--mono); font-size:11.5px; color:var(--ink-dim); }
+  }
+  .sheet figcaption{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+  }
+  .sheet figcaption span:last-child{ color:var(--ink-faint); }
+
+  /* ---------- abertura: vistas cotadas lado a lado ---------- */
+  .cotas-hero{
+    /* mesmo fundo da legenda; os desenhos ficam direto sobre ele, sem quadros (grade técnica bem sutil) */
+    --grid-minor: rgba(255,255,255,0.025); --grid-major: rgba(255,255,255,0.05);
+    color:var(--ink);
+    position:relative; z-index:2; min-height:100vh; overflow:hidden;
+    background:
+      linear-gradient(var(--grid-major) 1px, transparent 1px) 0 0 / 120px 120px,
+      linear-gradient(90deg, var(--grid-major) 1px, transparent 1px) 0 0 / 120px 120px,
+      linear-gradient(var(--grid-minor) 1px, transparent 1px) 0 0 / 24px 24px,
+      linear-gradient(90deg, var(--grid-minor) 1px, transparent 1px) 0 0 / 24px 24px,
+      var(--bg);
+    padding-block: calc(92px + env(safe-area-inset-top,0px)) 40px;
+    padding-inline: clamp(16px, 4vw, 56px);
+    display:flex; flex-direction:column;
+  }
+  @media (min-width: 721px){
+    .cotas-hero{ padding-right: calc(clamp(16px, 4vw, 56px) + 72px); }   /* espaço da navegação lateral */
+  }
+  .hero-inner{ width:100%; max-width:1440px; margin:0 auto; display:flex; flex-direction:column; justify-content:center; gap:28px; flex:1; }
+  .hero-head > div{ flex:1 1 auto; min-width:0; }
+  .hero-head{
+    display:grid; grid-template-columns:minmax(0,1fr) auto auto; grid-template-areas:"title desc logo";
+    align-items:end; column-gap:clamp(24px, 3vw, 44px); row-gap:18px;
+  }
+  .hero-head > div{ grid-area:title; }
+  .hero-head > p, .hero-head > .hero-desc{ grid-area:desc; }
+  .dl-row{ display:flex; flex-wrap:wrap; gap:10px; }
+  .btn-export[hidden]{ display:none; }
+  .hero-desc{ display:flex; flex-direction:column; align-items:flex-start; gap:14px; }
+  .hero-logo{ grid-area:logo; align-self:center; }
+  .hero-head .eyebrow{
+    font-family:var(--mono); font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent);
+    margin:0 0 12px 0; display:flex; align-items:center; gap:8px;
+  }
+  .hero-head .eyebrow::before{ content:""; width:26px; height:1px; background:var(--accent); display:inline-block; }
+  .hero-head h1{
+    font-family:var(--disp); font-weight:800; font-size:clamp(32px, 5vw, 56px); line-height:1.02;
+    letter-spacing:-.015em; margin:0; text-wrap:balance;
+  }
+  .hero-head > p, .hero-desc p{ margin:0; font-size:14.5px; line-height:1.55; color:var(--ink-dim); max-width:46ch; }
+  .project-meta{
+    display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); margin:0;
+    border-top:1px solid var(--panel-line); border-bottom:1px solid var(--panel-line);
+  }
+  .project-meta div{ padding:14px 18px 14px 0; display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .project-meta div + div{ padding-left:18px; border-left:1px solid var(--panel-line); }
+  .project-meta dt{ font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint); }
+  .project-meta dd{ margin:0; font-family:var(--disp); font-weight:700; font-size:clamp(16px, 1.6vw, 20px); color:var(--ink); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+  .project-meta dd small{ display:block; margin-top:3px; font-family:var(--mono); font-weight:400; font-size:11px; letter-spacing:.04em; color:var(--ink-dim); }
+  .project-meta dd .ver{ font-family:var(--mono); font-weight:500; font-size:.68em; letter-spacing:.06em; color:var(--accent); white-space:nowrap; }
+  .project-meta dd.todo{ color:var(--ink-faint); font-weight:500; }
+  .hero-logo{
+    height:clamp(64px, 8vw, 104px); width:auto;
+    filter:drop-shadow(0 0 18px rgba(243,206,0,0.10));
+  }
+  @media (max-width: 1080px){
+    .hero-head{ grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"title logo" "desc desc"; }
+    .project-meta{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .project-meta div:nth-child(3){ padding-left:0; border-left:0; }
+    .project-meta div:nth-child(n+3){ border-top:1px solid var(--panel-line); }
+  }
+  @media (max-width: 720px){
+    .hero-head{ grid-template-columns:1fr; grid-template-areas:"logo" "title" "desc"; }
+    .hero-logo{ height:60px; justify-self:start; }
+    .project-meta{ grid-template-columns:1fr; }
+    .project-meta div{ padding:12px 0; }
+    .project-meta div + div{ padding-left:0; border-left:0; border-top:1px solid var(--panel-line); }
+  }
+
+  /* ---------- botão de tema ---------- */
+  .theme-btn{
+    all:unset; box-sizing:border-box; cursor:pointer; pointer-events:auto; width:30px; height:30px; display:grid; place-items:center;
+    border:1px solid var(--panel-line); border-radius:50%; background:var(--panel); backdrop-filter:blur(6px); color:var(--ink-dim);
+    transition:color .2s ease, border-color .2s ease;
+  }
+  .theme-btn:hover{ color:var(--accent); border-color:var(--accent); }
+  .theme-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .theme-btn .ic-moon{ display:none; }
+  :root[data-theme="light"] .theme-btn .ic-sun{ display:none; }
+  :root[data-theme="light"] .theme-btn .ic-moon{ display:block; }
+  @media (max-width: 420px){ .theme-btn{ width:28px; height:28px; } .badge{ display:none; } }
+
+  /* ---------- tema claro ---------- */
+  :root[data-theme="light"]{
+    --bg:#ffffff;
+    --bg-2:#f6f7f9;
+    --panel: rgba(255,255,255,0.82);
+    --panel-line: rgba(10,12,15,0.13);
+    --ink:#0f1216;
+    --ink-dim:#4a525c;
+    --ink-faint:#7c858f;
+    --accent:#e85a1c;
+    --accent-soft: rgba(232,90,28,0.22);
+  }
+  :root[data-theme="light"] .cotas-hero{ --grid-minor: rgba(10,12,15,0.03); --grid-major: rgba(10,12,15,0.06); }
+  :root[data-theme="light"] .posicao{
+    background:
+      linear-gradient(rgba(10,12,15,0.06) 1px, transparent 1px) 0 0 / 120px 120px,
+      linear-gradient(90deg, rgba(10,12,15,0.06) 1px, transparent 1px) 0 0 / 120px 120px,
+      linear-gradient(rgba(10,12,15,0.03) 1px, transparent 1px) 0 0 / 24px 24px,
+      linear-gradient(90deg, rgba(10,12,15,0.03) 1px, transparent 1px) 0 0 / 24px 24px,
+      var(--bg);
+  }
+  :root[data-theme="light"] .cota-view .zoom-hint{ background:rgba(255,255,255,0.92); }
+  :root[data-theme="light"] .hero-logo{ filter:none; }
+  :root[data-theme="light"] .stage-toggle button[aria-pressed="true"]{ background:rgba(10,12,15,0.08); }
+  :root[data-theme="light"] .obs{ background:rgba(232,90,28,0.06); }
+  /* símbolos da legenda: tons claros viram escuros */
+  :root[data-theme="light"] .legend-table .sym [stroke="#c9ced6"],
+  :root[data-theme="light"] .legend-table .sym [stroke="#eceff2"]{ stroke:#3a4048; }
+  :root[data-theme="light"] .legend-table .sym [fill="#c9ced6"]{ fill:#3a4048; }
+  :root[data-theme="light"] .legend-table .sym [fill="#2c3036"]{ fill:#e6e8eb; }
+  :root[data-theme="light"] .legend-table .sym [stroke="#bfe600"]{ stroke:#8aa600; }
+  html, body, .cotas, .cotas-hero, .posicao, .legend-wrap{ transition:background-color .3s ease; }
+
+  /* ---------- posição no local ---------- */
+  .posicao{
+    position:relative; z-index:2;
+    background:
+      linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px) 0 0 / 120px 120px,
+      linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px) 0 0 / 120px 120px,
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px) 0 0 / 24px 24px,
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px) 0 0 / 24px 24px,
+      var(--bg);
+    border-top:1px solid var(--panel-line);
+    padding-block:72px 88px;
+    padding-inline:clamp(16px, 4vw, 56px);
+  }
+  @media (min-width: 721px){ .posicao{ padding-right:calc(clamp(16px, 4vw, 56px) + 72px); } }
+  .posicao .hero-inner{ gap:36px; }
+  .pos-grid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:clamp(24px, 4vw, 56px); align-items:end; }
+  .pos-fig{ margin:0; display:flex; flex-direction:column; gap:14px; transition:opacity .35s ease; }
+  .pos-fig img{ display:block; width:100%; height:auto; }
+  .pos-fig.dim{ opacity:.4; }
+  @media (max-width: 860px){ .pos-grid{ grid-template-columns:1fr; } }
+
+  /* ---------- observação (contrapeso) ---------- */
+  .obs{ border:1px solid rgba(255,106,43,0.45); border-left:3px solid var(--accent); background:rgba(255,106,43,0.06); border-radius:4px; padding:14px 18px; display:flex; flex-direction:column; gap:8px; }
+  .obs[hidden]{ display:none; }
+  .obs-k{ margin:0; font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); }
+  .obs-t{ margin:0; font-size:14.5px; line-height:1.55; color:var(--ink); }
+  .obs-t b{ color:var(--ink); font-weight:600; }
+  .obs details summary{ cursor:pointer; font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-dim); }
+  .obs details summary:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .obs ul{ margin:10px 0 0; padding-left:18px; font-size:13px; line-height:1.6; color:var(--ink-dim); }
+  .obs ul b{ color:var(--ink); font-weight:600; }
+  .obs-n{ margin:8px 0 0; font-size:12px; color:var(--ink-faint); }
+
+  /* ---------- vistas cotadas: mesma escala, sem quadros ---------- */
+  .cota-stage{
+    position:relative; display:flex; justify-content:center; align-items:flex-end;
+    gap:var(--cota-gap, 48px); padding-top:8px;
+  }
+  .cota-view{ margin:0; display:flex; flex-direction:column; align-items:flex-start; gap:14px; min-width:0; }
+  .cota-view .paper{
+    all:unset; position:relative; display:block; cursor:zoom-in; line-height:0;
+  }
+  /* zoom no lugar: a vista mantém o tamanho e o desenho aproxima dentro dela, no ponto clicado */
+  .cota-view .zoomwin{ position:relative; display:block; overflow:hidden; }
+  .cota-view .paper img{
+    position:absolute; left:0; top:0; display:block; max-width:none; max-height:none;
+    transition:width .5s cubic-bezier(.2,.7,.2,1), height .5s cubic-bezier(.2,.7,.2,1), left .5s cubic-bezier(.2,.7,.2,1), top .5s cubic-bezier(.2,.7,.2,1);
+  }
+  .cota-view.zoomed .paper{ cursor:zoom-out; }
+  .cota-view.zoomed .paper::before, .cota-view.zoomed .paper::after{ opacity:1; transform:none; }
+  .cota-view .paper:focus-visible{ outline:2px solid var(--accent); outline-offset:6px; }
+  .cota-view .zoom-hint{
+    top:auto; bottom:6px; right:6px; white-space:nowrap; color:var(--ink); background:rgba(10,12,15,0.85);
+    border-color:rgba(255,106,43,0.45); opacity:0; transition:opacity .2s ease;
+  }
+  .cota-view:hover .zoom-hint, .cota-view .paper:focus-visible .zoom-hint{ opacity:1; }
+  /* mira nos cantos da vista (só os cantos, sem moldura), aparece ao passar o mouse */
+  .cota-view .paper::before, .cota-view .paper::after{
+    content:""; position:absolute; width:14px; height:14px; border:1.5px solid var(--accent);
+    opacity:0; transition:opacity .25s ease, transform .25s ease; pointer-events:none;
+  }
+  .cota-view .paper::before{ top:-10px; left:-10px; border-width:1.5px 0 0 1.5px; transform:translate(4px,4px); }
+  .cota-view .paper::after{ bottom:-10px; right:-10px; border-width:0 1.5px 1.5px 0; transform:translate(-4px,-4px); }
+  .cota-view:hover .paper::before, .cota-view:hover .paper::after,
+  .cota-view .paper:focus-visible::before, .cota-view .paper:focus-visible::after{ opacity:1; transform:none; }
+
+  .view-label{
+    display:flex; align-items:center; gap:10px; width:100%;
+    font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink);
+  }
+  .view-label i{ font-style:normal; color:var(--accent); }
+  .view-label::after{
+    content:""; flex:1; height:1px; min-width:16px;
+    background:linear-gradient(90deg, rgba(255,106,43,0.7), rgba(255,106,43,0));
+  }
+
+  .cota-foot{ justify-content:flex-end !important;
+    display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; color:var(--ink-dim);
+  }
+  .scalebar{ display:flex; flex-direction:column; gap:6px; }
+  .scalebar .ticks{ position:relative; height:8px; border-bottom:1.5px solid var(--ink); }
+  .scalebar .ticks i{ position:absolute; bottom:0; width:1.5px; height:8px; background:var(--ink); }
+  .scalebar .ticks i:nth-child(even){ height:5px; background:var(--ink-dim); }
+  .scalebar .nums{ position:relative; height:12px; font-variant-numeric:tabular-nums; color:var(--ink-dim); }
+  .scalebar .nums span{ position:absolute; transform:translateX(-50%); white-space:nowrap; }
+
+  /* entrada: cada vista é "escaneada" de cima para baixo por uma linha laranja */
+  .cota-view .paper .scan{ position:absolute; left:-6px; right:-6px; height:2px; top:0; opacity:0; pointer-events:none;
+    background:linear-gradient(90deg, rgba(255,106,43,0), rgba(255,106,43,0.95), rgba(255,106,43,0));
+    box-shadow:0 0 12px rgba(255,106,43,0.6); }
+  .cotas-hero.ready .cota-view .paper img{ animation:cotaReveal 1.1s cubic-bezier(.2,.7,.2,1) both; animation-delay:var(--d,0s); }
+  .cotas-hero.ready .cota-view .paper .scan{ animation:cotaScan 1.1s cubic-bezier(.2,.7,.2,1) both; animation-delay:var(--d,0s); }
+  @keyframes cotaReveal{ from{ clip-path:inset(0 0 100% 0); } to{ clip-path:inset(0 0 0 0); } }
+  @keyframes cotaScan{ 0%{ top:0; opacity:1; } 90%{ opacity:1; } 100%{ top:100%; opacity:0; } }
+
+  .hero-cue{
+    display:flex; flex-direction:column; align-items:center; gap:8px; padding-top:4px;
+    font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint);
+  }
+  .hero-cue svg{ animation:bob 1.8s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce){
+    .hero-cue svg{ animation:none; }
+    .cotas-hero.ready .cota-view .paper img, .cotas-hero.ready .cota-view .paper .scan{ animation:none; }
+    .cota-view .paper img{ transition:none; }
+  }
+
+  @media (max-width: 860px){
+    .cota-stage{ flex-direction:column; align-items:center; gap:36px; }
+  }
+  @media (max-width: 720px){
+    .railnav{ transition:opacity .3s ease; }
+    .hud.in-doc .railnav{ opacity:0; pointer-events:none; }   /* no celular, a navegação aparece só no 3D */
+    /* no celular as setas ficam juntas no canto de baixo, sem cobrir os desenhos */
+    .stepper{ right:12px; top:auto !important; }
+    #stepDownWrap{ bottom:calc(18px + env(safe-area-inset-bottom,0px)); }
+    #stepUpWrap{ bottom:calc(62px + env(safe-area-inset-bottom,0px)); }
+    .stepper button{ width:36px; height:36px; }
+    .panels{ right:60px; }
+  }
+  /* fora do 3D o nome da etapa ativa só aparece ao passar o mouse, para não cobrir os desenhos */
+  .hud.in-doc .railnav button.active .rn-num{ opacity:0; transform:translateX(4px); }
+  .hud.in-doc .railnav button.active:hover .rn-num,
+  .hud.in-doc .railnav button.active:focus-visible .rn-num{ opacity:1; transform:translateX(0); }
+
+  .stage-toggle button, .badge{ white-space:nowrap; }
+  @media (max-width: 720px){
+    .topbar-right{ gap:6px; }
+    .stage-toggle button{ padding:5px 8px; font-size:9.5px; letter-spacing:.06em; }
+    .badge{ padding:6px 8px; font-size:9.5px; letter-spacing:.06em; }
+    .topbar .brand{ display:none; }
+    .topbar{ justify-content:flex-end; padding-left:16px; padding-right:16px; }
+  }
+
+  @media (max-width: 720px){
+    .railnav{ right:12px; gap:12px; }
+    .railnav .rn-num{ display:none; }
+    .telemetry{ display:none; }
+    .panels{ left:16px; right:16px; bottom:52px; }
+    .panel p{ max-width:none; }
+  }
+</style>
+
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<canvas id="scene"></canvas>
+
+<section class="cotas-hero" id="cotas" aria-labelledby="heroTitle">
+  <div class="hero-inner">
+    <header class="hero-head">
+      <div>
+        <p class="eyebrow">Projeto · Estrutura de sonorização em box truss Q30 · Sherpa42</p>
+        <h1 id="heroTitle">Natal Ibirapuera 2026</h1>
+      </div>
+      <div class="hero-desc">
+        <p>Cubo de 2,02 m em box truss Q30 com praticáveis, que recebe três caixas point source no topo e o sub por dentro. Use a chave no canto superior para ver a estrutura sem ou com os equipamentos; role ou use as setas para ver o modelo em 3D e, no final, a legenda de componentes.</p>
+        <div class="dl-row"><button type="button" class="btn-export btn-dl" data-file="projeto-impressao.pdf" data-name="Natal Ibirapuera 2026 - Estrutura Sonorização v00.pdf" data-mime="application/pdf"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 1.5v7.5M7 9l-3-3M7 9l3-3M2 11.5h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Baixar PDF do projeto</button></div>
+      </div>
+      <img class="hero-logo" id="heroLogo" src="logo-infratech-original.png" alt="Infratech Producer Event Crew" width="220" height="220">
+    </header>
+
+    <!-- Ficha do projeto: preencher com os dados reais de cada projeto -->
+    <dl class="project-meta" aria-label="Dados do projeto">
+      <div><dt>Local</dt><dd id="metaLocal">Parque Ibirapuera</dd></div>
+      <div><dt>Data do evento</dt><dd id="metaEvento" class="todo">A definir</dd></div>
+      <div><dt>Data do projeto</dt><dd id="metaProjeto">29/10/2026 <span class="ver">· Versão 00</span></dd></div>
+      <div><dt>Projeto por</dt><dd id="metaAutor">Guilherme Araujo</dd></div>
+    </dl>
+
+    <!-- As três vistas na mesma escala (o PDF é todo 1:25), alinhadas pela base -->
+    <div class="cota-stage" id="cotaStage">
+      <figure class="sheet cota-view" style="--d:.05s">
+        <button type="button" class="paper" data-title="Vista Frontal" aria-label="Aproximar Vista Frontal" aria-pressed="false"><span class="zoomwin"><img id="imgFrontal" src="cota-sem-frontal-escuro.svg" alt="Vista frontal cotada da estrutura" width="673" height="707"><span class="scan" aria-hidden="true"></span></span><span class="zoom-hint" aria-hidden="true">Clique para aproximar</span></button>
+        <figcaption class="view-label"><i>01</i> Vista Frontal</figcaption>
+      </figure>
+      <figure class="sheet cota-view" style="--d:.2s">
+        <button type="button" class="paper" data-title="Vista Lateral" aria-label="Aproximar Vista Lateral" aria-pressed="false"><span class="zoomwin"><img id="imgLateral" src="cota-sem-lateral-escuro.svg" alt="Vista lateral cotada da estrutura" width="671" height="707"><span class="scan" aria-hidden="true"></span></span><span class="zoom-hint" aria-hidden="true">Clique para aproximar</span></button>
+        <figcaption class="view-label"><i>02</i> Vista Lateral</figcaption>
+      </figure>
+      <figure class="sheet cota-view" style="--d:.35s">
+        <button type="button" class="paper" data-title="Vista Topo" aria-label="Aproximar Vista Topo" aria-pressed="false"><span class="zoomwin"><img id="imgTopo" src="cota-sem-topo-escuro.svg" alt="Vista de topo cotada da estrutura" width="569" height="557"><span class="scan" aria-hidden="true"></span></span><span class="zoom-hint" aria-hidden="true">Clique para aproximar</span></button>
+        <figcaption class="view-label"><i>03</i> Vista Topo</figcaption>
+      </figure>
+    </div>
+
+    <div class="cota-foot">
+      <span>Medidas em metros · clique em um ponto da vista para aproximar; clique de novo para afastar</span>
+    </div>
+
+    <div class="hero-cue" aria-hidden="true">
+      <span>Role para o modelo 3D</span>
+      <svg width="14" height="18" viewBox="0 0 14 18" fill="none"><path d="M7 1V17M7 17L1 11M7 17L13 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+</section>
+
+<div class="scroll-track" id="track"></div>
+
+<section class="cotas" id="legenda" aria-labelledby="legendTitle">
+  <div class="cotas-inner">
+    <header class="cotas-head">
+      <p class="kicker">Legenda</p>
+      <h2 id="legendTitle">Componentes e quantidades</h2>
+      <p>Todos os componentes da estrutura e os equipamentos de sonorização, com a especificação e a quantidade total.</p>
+    </header>
+
+    <figure class="sheet sheet-legend">
+      <div class="legend-wrap">
+        <table class="legend-table">
+          <caption class="sr-only">Legenda de componentes da estrutura com quantidades</caption>
+          <thead><tr><th scope="col">Símbolo</th><th scope="col">Componente</th><th scope="col" class="c-spec">Especificação</th><th scope="col" class="c-qty">Quant.</th></tr></thead>
+          <tbody data-opt="op1">
+          <tr class="grp"><th colspan="4" scope="rowgroup">Estrutura</th></tr>
+          <tr><td class="c-sym"><svg class="sym" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="1.5" y="1.5" width="17" height="17" rx="1.5" fill="none" stroke="#c9ced6" stroke-width="1.4"/><rect x="5.5" y="7.5" width="9" height="5" fill="none" stroke="#c9ced6" stroke-width="1.2"/></svg></td><td class="c-name">Cubo Q30<span class="spec-inline">5 faces</span></td><td class="c-spec">5 faces</td><td class="c-qty">8</td></tr>
+          <tr><td class="c-sym"><svg class="sym" width="25" height="20" viewBox="0 0 25 20" aria-hidden="true"><rect x="1" y="3.5" width="23" height="13" fill="none" stroke="#cc99ff" stroke-width="1.4"/><polyline points="2,4 9,16 16,4 23,16" fill="none" stroke="#cc99ff" stroke-width="1"/></svg></td><td class="c-name">Box Truss Q30<span class="spec-inline">0,40 m</span></td><td class="c-spec">0,40 m</td><td class="c-qty">12</td></tr>
+          <tr><td class="c-sym"><svg class="sym" width="38" height="20" viewBox="0 0 38 20" aria-hidden="true"><rect x="1" y="3.5" width="36" height="13" fill="none" stroke="#ffaa00" stroke-width="1.4"/><polyline points="2,4 9,16 16,4 23,16 30,4" fill="none" stroke="#ffaa00" stroke-width="1"/></svg></td><td class="c-name">Box Truss Q30<span class="spec-inline">1,00 m</span></td><td class="c-spec">1,00 m</td><td class="c-qty">12</td></tr>
+          <tr><td class="c-sym"><svg class="sym" width="60" height="20" viewBox="0 0 60 20" aria-hidden="true"><rect x="1" y="6" width="58" height="8" fill="#2c3036" stroke="#c9ced6" stroke-width="1.4"/><line x1="30" y1="6" x2="30" y2="14" stroke="#c9ced6" stroke-width="1"/></svg></td><td class="c-name">Praticável<span class="spec-inline">2 × 1 m</span></td><td class="c-spec">2 × 1 m</td><td class="c-qty">3</td></tr>
+          <tr class="grp"><th colspan="4" scope="rowgroup">Sonorização</th></tr>
+          <tr><td class="c-sym"><svg class="sym" width="22" height="24" viewBox="0 0 22 24" aria-hidden="true"><path d="M3 2 H19 L16.5 22 H5.5 Z" fill="rgba(255,138,138,0.15)" stroke="#ff8a8a" stroke-width="1.4"/><circle cx="11" cy="9" r="3" fill="none" stroke="#ff8a8a" stroke-width="1.1"/><line x1="7" y1="16" x2="15" y2="16" stroke="#ff8a8a" stroke-width="1.1"/></svg></td><td class="c-name">Point Source<span class="spec-inline">No topo, na borda da frente</span></td><td class="c-spec">No topo, na borda da frente</td><td class="c-qty">3</td></tr>
+          <tr><td class="c-sym"><svg class="sym" width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1.5" y="1.5" width="19" height="19" rx="1.5" fill="rgba(232,216,96,0.15)" stroke="#e0cf4f" stroke-width="1.4"/><circle cx="11" cy="11" r="5.5" fill="none" stroke="#e0cf4f" stroke-width="1.2"/><circle cx="11" cy="11" r="1.6" fill="#e0cf4f"/></svg></td><td class="c-name">Sub<span class="spec-inline">Dentro do cubo, no praticável inferior</span></td><td class="c-spec">Dentro do cubo, no praticável inferior</td><td class="c-qty">1</td></tr>
+          <tr class="grp"><th colspan="4" scope="rowgroup">Fixações</th></tr>
+          <tr><td class="c-sym"><svg class="sym" width="28" height="14" viewBox="0 0 28 14" aria-hidden="true"><polygon points="2,7 5,2 10,2 13,7 10,12 5,12" fill="none" stroke="#c9ced6" stroke-width="1.2"/><line x1="13" y1="7" x2="26" y2="7" stroke="#c9ced6" stroke-width="2.4"/></svg></td><td class="c-name">Parafuso sextavado<span class="spec-inline">Ø 5/8</span></td><td class="c-spec">Ø 5/8</td><td class="c-qty">144</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figcaption><span>Legenda</span><span>Quantidades totais</span></figcaption>
+      <div class="legend-actions" id="legendActions">
+        <span class="export-status" id="exportStatus" role="status" aria-live="polite"></span>
+        <button type="button" class="btn-export btn-dl" data-file="projeto-impressao.pdf" data-name="Natal Ibirapuera 2026 - Estrutura Sonorização v00.pdf" data-mime="application/pdf"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 1.5v7.5M7 9l-3-3M7 9l3-3M2 11.5h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Baixar PDF do projeto</button>
+        <button type="button" class="btn-export" id="btnExport">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 1.5v7.5M7 9l-3-3M7 9l3-3M2 11.5h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Exportar planilha (.xlsx)
+        </button>
+      </div>
+    </figure>
+  </div>
+</section>
+
+<div class="hud" id="hud">
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> Sistema de Apresentação <b>Estrutural</b></div>
+    <div class="topbar-right">
+      <div class="stage-toggle" id="stageToggle" role="group" aria-label="Opção da estrutura" hidden style="display:none">
+        <button type="button" data-opt="op1" aria-pressed="true">Op. 1</button>
+        <button type="button" data-opt="op2" aria-pressed="false">Op. 2</button>
+      </div>
+      <div class="stage-toggle" id="luzToggle" role="group" aria-label="Equipamentos">
+        <button type="button" data-luz="0" aria-pressed="true">Sem equip.</button>
+        <button type="button" data-luz="1" aria-pressed="false">Com equip.</button>
+      </div>
+      <button type="button" class="theme-btn" id="themeBtn" aria-pressed="false" aria-label="Tema claro" title="Tema claro"><svg class="ic-sun" width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.4"/><path d="M8 1v1.8M8 13.2V15M1 8h1.8M13.2 8H15M3.05 3.05l1.27 1.27M11.68 11.68l1.27 1.27M3.05 12.95l1.27-1.27M11.68 4.32l1.27-1.27" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><svg class="ic-moon" width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
+      <div class="badge" id="badge">Vistas Cotadas</div>
+    </div>
+  </div>
+
+  <div class="crosshair"><i></i><i></i><i></i></div>
+
+  <div class="stepper" id="stepUpWrap"><button type="button" id="stepUp" aria-label="Etapa anterior" title="Etapa anterior"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2 9.5L7 4.5L12 9.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+  <nav class="railnav" id="railnav" aria-label="Navegação entre vistas"></nav>
+  <div class="stepper" id="stepDownWrap"><button type="button" id="stepDown" aria-label="Próxima etapa" title="Próxima etapa"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2 4.5L7 9.5L12 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+
+  <div class="panels" id="panels"></div>
+
+  <div class="telemetry" id="telemetry">
+    <span>CAM <b id="tCam">—</b></span>
+    <span>ALVO <b id="tTarget">—</b></span>
+    <span>FOV <b id="tFov">—</b></span>
+  </div>
+
+  <div class="loader" id="loader" role="status" aria-live="polite">
+    <span class="loader-label" id="loaderLabel">Carregando modelo 3D</span>
+    <span class="loader-bar"><i id="loaderFill"></i></span>
+  </div>
+
+  <div class="progress-rail"><div class="progress-fill" id="progressFill"></div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------------------------------------------------------
+     NATAL IBIRAPUERA 2026 · ESTRUTURA SONORIZAÇÃO — apresentação estrutural por scroll
+     ---------------------------------------------------------------
+     Motor padrão: câmera que percorre VIEWS conforme a rolagem,
+     painéis de texto em crossfade, navegação lateral, telemetria e
+     barra de progresso.
+
+     Uma estrutura (cubo de box truss Q30 com praticáveis), sem e com os
+     equipamentos de sonorização (chave "Sem equip. / Com equip.").
+     Os OBJ do Vectorworks (mm, Z para cima) foram convertidos para
+     arquivos otimizados (gzip + base64), em metros, Y para cima.
+
+     A abertura mostra a ficha do projeto, o logo e os desenhos cotados
+     da versão escolhida; depois das vistas 3D vem a legenda.
+  ----------------------------------------------------------------*/
+
+  /* ---------- tema claro / escuro (preferência guardada só neste navegador) ---------- */
+  var THEME_KEY = 'natal-ibirapuera-2026-tema';
+  var theme = 'dark';
+  try { if (localStorage.getItem(THEME_KEY) === 'light') theme = 'light'; } catch (e) {}
+  document.documentElement.setAttribute('data-theme', theme);
+  function themedSrc(src){
+    // os desenhos claros têm o mesmo nome, sem o sufixo "-escuro"
+    return theme === 'light' ? src.replace('-escuro.svg', '.svg') : src.replace(/(-escuro)?\.svg$/, '-escuro.svg');
+  }
+
+  var REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Dois modelos da mesma estrutura: sem equipamentos (box truss colorido) e com os point source e o sub (box truss preto, como no Vectorworks). Mesmo referencial.
+  var STAGES = {
+    op1:    { url: 'model-sem.b64.txt' },
+    op1luz: { url: 'model-com-pretos.b64.txt' }
+  };
+  // Desenhos cotados: as três vistas trocam com a chave de equipamentos
+  var COTAS = {
+    op1: {
+      frontal:    { src: 'cota-sem-frontal-escuro.svg', w: 673, h: 707 },
+      lateral:    { src: 'cota-sem-lateral-escuro.svg', w: 671, h: 707 },
+      topo:       { src: 'cota-sem-topo-escuro.svg',    w: 569, h: 557 },
+      frontalLuz: { src: 'cota-com-ps-frontal-escuro.svg', w: 567, h: 677 },
+      lateralLuz: { src: 'cota-com-ps-lateral-escuro.svg', w: 565, h: 677 },
+      topoLuz:    { src: 'cota-com-ps-topo-escuro.svg',    w: 487, h: 483 }
+    }
+  };
+  var activeOpt = 'op1', activeLuz = false;
+  var activeStage = 'op1';
+  function stageKey(){ return activeOpt + (activeLuz ? 'luz' : ''); }
+  function setCotas(){
+    var c = COTAS[activeOpt];
+    setImg(imgFrontal, activeLuz ? c.frontalLuz : c.frontal);
+    setImg(imgLateral, activeLuz ? c.lateralLuz : c.lateral);
+    setImg(imgTopo, activeLuz ? c.topoLuz : c.topo);
+  }
+
+  // Caixa de enquadramento das câmeras (envelope das duas opções), em metros.
+  // A câmera sempre mira o centro desta caixa — a estrutura fica no centro da tela.
+  var FIT_MIN = [-1.02, 0, -1.02];
+  var FIT_MAX = [ 1.02, 2.88, 1.02];
+  var FIT_CENTER = [0, 1.44, 0];
+
+  // Eixos das torres (em metros, espaço da cena) — usados nas bolhas de eixo.
+  var AXES_X = [-0.87, 0.87];                       // eixos 1, 2 (centro das torres de canto)
+  var AXES_Z = { op1: [0.86, -0.86] };               // eixos A (frente), B (fundo)
+
+  var COLORS = {
+    bg: 0x0a0c0f,
+    ground: 0x14171c
+  };
+
+  /* ----------------------------- Cena base ----------------------------- */
+
+  var canvas = document.getElementById('scene');
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias:true, alpha:false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  if (THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
+  if (THREE.ACESFilmicToneMapping){
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+  }
+
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(COLORS.bg);
+  scene.fog = new THREE.Fog(COLORS.bg, 60, 160);
+
+  var camera = new THREE.PerspectiveCamera(24, window.innerWidth/window.innerHeight, 0.05, 400);
+
+  function resize(){
+    var w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h);
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  /* ----------------------------- Luz ----------------------------- */
+
+  scene.add(new THREE.HemisphereLight(0x5b6776, 0x0c0d10, 0.75));
+
+  var sun = new THREE.DirectionalLight(0xfff2e2, 1.2);
+  sun.position.set(7, 12, 9);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = -6;
+  sun.shadow.camera.right = 6;
+  sun.shadow.camera.top = 6;
+  sun.shadow.camera.bottom = -6;
+  sun.shadow.camera.near = 2;
+  sun.shadow.camera.far = 40;
+  sun.shadow.bias = -0.0008;
+  sun.shadow.normalBias = 0.02;
+  scene.add(sun);
+  sun.target.position.set(0, 2.5, 0);
+  scene.add(sun.target);
+
+  var rim = new THREE.DirectionalLight(0x6f8dab, 0.4);
+  rim.position.set(-8, 5, -7);
+  scene.add(rim);
+
+  /* ----------------------------- Materiais ----------------------------- */
+
+  var matGround = new THREE.MeshStandardMaterial({ color: COLORS.ground, metalness:0.0, roughness:1.0 });
+
+  function shadowMesh(geo, mat){
+    var m = new THREE.Mesh(geo, mat);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    return m;
+  }
+
+  /* ------------------------- Cenário (piso, eixos, escala) ------------------------- */
+
+  var structure = new THREE.Group();
+  var gridStuff = new THREE.Group(); // elementos que só interessam na vista de topo
+
+  function buildSetting(){
+    var ground = shadowMesh(new THREE.PlaneGeometry(80, 80), matGround);
+    ground.rotation.x = -Math.PI/2;
+    ground.position.y = -0.003;
+    structure.add(ground);
+
+    var grid = new THREE.GridHelper(40, 40, 0x3a4048, 0x2a2f36);
+    grid.position.y = 0.0;
+    grid.material.transparent = true;
+    grid.material.opacity = 0.35;
+    grid.userData.theme = 'dark';
+    gridStuff.add(grid);
+    var gridLight = new THREE.GridHelper(40, 40, 0xa9b0b9, 0xc9ced6);
+    gridLight.position.y = 0.0;
+    gridLight.material.transparent = true;
+    gridLight.material.opacity = 0.35;
+    gridLight.userData.theme = 'light';
+    gridStuff.add(gridLight);
+
+    function makeLabel(text){
+      var c = document.createElement('canvas');
+      c.width = 128; c.height = 128;
+      var ctx = c.getContext('2d');
+      ctx.clearRect(0,0,128,128);
+      ctx.fillStyle = 'rgba(10,12,15,0.72)';
+      ctx.beginPath(); ctx.arc(64,64,46,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,106,43,0.9)';
+      ctx.lineWidth = 5;
+      ctx.stroke();
+      ctx.fillStyle = '#eef1f4';
+      ctx.font = '600 52px IBM Plex Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 64, 68);
+      var tex = new THREE.CanvasTexture(c);
+      var mat = new THREE.SpriteMaterial({ map: tex, transparent:true, depthTest:false });
+      var sprite = new THREE.Sprite(mat);
+      sprite.scale.set(0.5,0.5,0.5);
+      return sprite;
+    }
+
+    AXES_X.forEach(function(x, i){
+      var lab = makeLabel(String(i+1));
+      lab.position.set(x, 0.05, FIT_MAX[2] + 0.5);
+      gridStuff.add(lab);
+    });
+    Object.keys(AXES_Z).forEach(function(opt){
+      AXES_Z[opt].forEach(function(z, i){
+        var lab = makeLabel('AB'[i]);
+        lab.position.set(FIT_MIN[0] - 0.5, 0.05, z);
+        lab.userData.opt = opt;
+        gridStuff.add(lab);
+      });
+    });
+
+    structure.add(gridStuff);
+
+    scene.add(structure);
+  }
+
+  buildSetting();
+
+  /* ------------------------- Modelos 3D (duas etapas) ------------------------- */
+
+  var loaderEl = document.getElementById('loader');
+  var loaderLabelEl = document.getElementById('loaderLabel');
+  var loaderFillEl = document.getElementById('loaderFill');
+
+  function srgbColor(rgb){
+    var c = new THREE.Color();
+    c.setRGB(rgb[0], rgb[1], rgb[2]);
+    if (c.convertSRGBToLinear) c.convertSRGBToLinear();
+    return c;
+  }
+
+  function fetchWithProgress(url, onProgress){
+    return fetch(url).then(function(res){
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var total = parseInt(res.headers.get('content-length') || '0', 10);
+      if (!res.body || !res.body.getReader) return res.arrayBuffer();
+      var reader = res.body.getReader(), chunks = [], received = 0;
+      function pump(){
+        return reader.read().then(function(r){
+          if (r.done){
+            var out = new Uint8Array(received), o = 0;
+            chunks.forEach(function(c){ out.set(c, o); o += c.length; });
+            return out.buffer;
+          }
+          chunks.push(r.value); received += r.value.length;
+          if (total && onProgress) onProgress(Math.min(1, received/total));
+          return pump();
+        });
+      }
+      return pump();
+    });
+  }
+
+  function fromBase64(buf){
+    var txt = new TextDecoder().decode(new Uint8Array(buf)).replace(/\s+/g, '');
+    var bin = atob(txt);
+    var out = new Uint8Array(bin.length);
+    for (var i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+    return out.buffer;
+  }
+
+  function maybeGunzip(buf){
+    var b = new Uint8Array(buf, 0, 2);
+    if (b[0] === 0x1f && b[1] === 0x8b){
+      if (typeof DecompressionStream === 'undefined') throw new Error('Navegador sem suporte a gzip');
+      var stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+      return new Response(stream).arrayBuffer();
+    }
+    return Promise.resolve(buf);
+  }
+
+  function buildModel(buf){
+    var dv = new DataView(buf);
+    var magic = String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3));
+    if (magic !== 'STRM') throw new Error('Arquivo de modelo inválido');
+    var hlen = dv.getUint32(4, true);
+    var header = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 8, hlen)));
+    var base = 8 + hlen;
+    var bmin = header.bboxMin, bmax = header.bboxMax;
+    var span = [bmax[0]-bmin[0], bmax[1]-bmin[1], bmax[2]-bmin[2]];
+
+    var materials = {};
+    Object.keys(header.materials).forEach(function(name){
+      materials[name] = new THREE.MeshStandardMaterial({
+        color: srgbColor(header.materials[name]),
+        metalness: 0.25,
+        roughness: 0.5,
+        side: THREE.DoubleSide
+      });
+    });
+
+    var model = new THREE.Group();
+    header.chunks.forEach(function(c){
+      var q = new Uint16Array(buf, base + c.posOffset, c.vcount*3);
+      var pos = new Float32Array(c.vcount*3);
+      for (var i=0;i<c.vcount;i++){
+        pos[i*3]   = bmin[0] + q[i*3]   / 65535 * span[0];
+        pos[i*3+1] = bmin[1] + q[i*3+1] / 65535 * span[1];
+        pos[i*3+2] = bmin[2] + q[i*3+2] / 65535 * span[2];
+      }
+      var nor = new Int8Array(buf, base + c.norOffset, c.vcount*3);
+      var idx = new Uint16Array(buf, base + c.idxOffset, c.icount);
+      var g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      g.setAttribute('normal', new THREE.BufferAttribute(new Int8Array(nor), 3, true));
+      g.setIndex(new THREE.BufferAttribute(new Uint16Array(idx), 1));
+      g.computeBoundingSphere();
+      var mesh = new THREE.Mesh(g, materials[c.mat]);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      model.add(mesh);
+    });
+    return model;
+  }
+
+  var models = {};    // etapa -> THREE.Group
+  var loading = {};   // etapa -> Promise
+
+  function loadStage(stage, showProgress){
+    if (loading[stage]) return loading[stage];
+    loading[stage] = fetchWithProgress(STAGES[stage].url, showProgress ? function(f){
+        loaderFillEl.style.width = (f*100).toFixed(1) + '%';
+      } : null)
+      .then(fromBase64)
+      .then(maybeGunzip)
+      .then(function(buf){
+        var m = buildModel(buf);
+        m.visible = (stage === activeStage);
+        structure.add(m);
+        models[stage] = m;
+        return m;
+      });
+    loading[stage].catch(function(){ delete loading[stage]; });
+    return loading[stage];
+  }
+
+  function showLoader(){
+    loaderLabelEl.textContent = 'Carregando modelo 3D';
+    loaderFillEl.style.width = '0%';
+    loaderEl.classList.remove('done', 'error');
+  }
+  function loaderError(err){
+    loaderLabelEl.textContent = 'Não foi possível carregar o modelo 3D (' + err.message + ')';
+    loaderEl.classList.add('error');
+  }
+
+  // pré-carrega os outros modelos, um de cada vez, começando pela mesma opção com/sem luz
+  function preloadOthers(){
+    var order = ['op1', 'op1luz'].filter(function(k){ return k !== activeStage; });
+    order.sort(function(a, b){ return (b.indexOf(activeOpt) === 0) - (a.indexOf(activeOpt) === 0); });
+    order.reduce(function(p, k){ return p.then(function(){ return loadStage(k, false).catch(function(){}); }); }, Promise.resolve());
+  }
+
+  showLoader();
+  loadStage(activeStage, true)
+    .then(function(){
+      loaderEl.classList.add('done');
+      preloadOthers();
+    })
+    .catch(loaderError);
+
+  /* ------------------------- Chave de etapa + desenhos cotados ------------------------- */
+
+  var optButtons = Array.prototype.slice.call(document.querySelectorAll('#stageToggle button'));
+  var luzButtons = Array.prototype.slice.call(document.querySelectorAll('#luzToggle button'));
+  var imgFrontal = document.getElementById('imgFrontal');
+  var imgLateral = document.getElementById('imgLateral');
+  var imgTopo = document.getElementById('imgTopo');
+
+  function setImg(im, d){ im.src = themedSrc(d.src); im.width = d.w; im.height = d.h; }
+
+  function applyStage(){
+    var stage = stageKey();
+    activeStage = stage;
+    optButtons.forEach(function(b){ b.setAttribute('aria-pressed', String(b.getAttribute('data-opt') === activeOpt)); });
+    luzButtons.forEach(function(b){ b.setAttribute('aria-pressed', String((b.getAttribute('data-luz') === '1') === activeLuz)); });
+    Object.keys(models).forEach(function(k){ models[k].visible = (k === stage); });
+    gridStuff.children.forEach(function(c){ if (c.userData.opt) c.userData.hide = c.userData.opt !== activeOpt; });
+    setCotas();
+    layoutCotas();
+    Array.prototype.forEach.call(document.querySelectorAll('.legend-table tbody[data-opt]'), function(tb){
+      tb.hidden = tb.getAttribute('data-opt') !== activeOpt;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-ref-opt]'), function(el){
+      el.classList.toggle('dim', el.getAttribute('data-ref-opt') !== activeOpt);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-opt-only]'), function(el){
+      el.hidden = el.getAttribute('data-opt-only') !== activeOpt;
+    });
+    if (typeof renderPanels === 'function') renderPanels();
+    if (!models[stage]){
+      showLoader();
+      loadStage(stage, true)
+        .then(function(){ if (activeStage === stage) loaderEl.classList.add('done'); })
+        .catch(loaderError);
+    } else if (loaderEl.classList.contains('error') || !loaderEl.classList.contains('done')){
+      loaderEl.classList.add('done');
+    }
+  }
+
+  /* ---------- vistas cotadas: todas na mesma escala ---------- */
+  // Os SVGs saem do mesmo PDF (escala 1:25): largura/altura em unidades do SVG = 2 × pt.
+  // Usar um único fator para as três deixa as estruturas proporcionais entre si.
+  var SVG_UNITS_PER_M = 2 * 72 / 0.0254 / 25;
+  var cotaImgs = ['imgFrontal', 'imgLateral', 'imgTopo'].map(function(id){ return document.getElementById(id); });
+  var cotaStage = document.getElementById('cotaStage');
+  function layoutCotas(){
+    var avail = cotaStage.clientWidth;
+    var stacked = window.innerWidth <= 860;
+    var ws = cotaImgs.map(function(im){ return +im.getAttribute('width'); });
+    var hs = cotaImgs.map(function(im){ return +im.getAttribute('height'); });
+    var k;
+    if (stacked){
+      k = avail / Math.max.apply(null, ws);
+    } else {
+      var gap = Math.max(24, Math.min(64, avail * 0.035));
+      cotaStage.style.setProperty('--cota-gap', gap + 'px');
+      var maxH = Math.max(260, window.innerHeight * 0.56);
+      k = Math.min((avail - 2 * gap) / (ws[0] + ws[1] + ws[2]), maxH / Math.max.apply(null, hs));
+    }
+    cotaImgs.forEach(function(im, i){
+      var w = ws[i] * k, h = hs[i] * k, win = im.parentNode;
+      win.style.width = w + 'px'; win.style.height = h + 'px';
+      im.dataset.w = w; im.dataset.h = h;
+      setZoom(im, false);
+    });
+  }
+  // Clique: aproxima o desenho no ponto clicado, dentro da própria vista. Novo clique: volta ao normal.
+  var ZOOM = 2.8;
+  function setZoom(im, on, cx, cy){
+    var w = +im.dataset.w, h = +im.dataset.h, view = im.closest('.cota-view'), btn = im.closest('.paper');
+    if (!on){
+      im.style.width = w + 'px'; im.style.height = h + 'px'; im.style.left = '0px'; im.style.top = '0px';
+      view.classList.remove('zoomed'); btn.setAttribute('aria-pressed', 'false');
+      btn.querySelector('.zoom-hint').textContent = 'Clique para aproximar';
+      return;
+    }
+    var W = w * ZOOM, H = h * ZOOM;
+    // o ponto clicado fica embaixo do cursor; sem deixar aparecer borda vazia
+    var left = Math.min(0, Math.max(w - W, cx - cx * ZOOM));
+    var top = Math.min(0, Math.max(h - H, cy - cy * ZOOM));
+    im.style.width = W + 'px'; im.style.height = H + 'px'; im.style.left = left + 'px'; im.style.top = top + 'px';
+    view.classList.add('zoomed'); btn.setAttribute('aria-pressed', 'true');
+    btn.querySelector('.zoom-hint').textContent = 'Clique para afastar';
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.cota-view .paper'), function(btn){
+    btn.addEventListener('click', function(e){
+      var im = btn.querySelector('img'), win = im.parentNode;
+      if (btn.closest('.cota-view').classList.contains('zoomed')){ setZoom(im, false); return; }
+      var r = win.getBoundingClientRect();
+      var keyboard = e.detail === 0;            // Enter/Espaço: aproxima no centro
+      var cx = keyboard ? r.width / 2 : Math.max(0, Math.min(r.width, e.clientX - r.left));
+      var cy = keyboard ? r.height / 2 : Math.max(0, Math.min(r.height, e.clientY - r.top));
+      setZoom(im, true, cx, cy);
+    });
+  });
+  window.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') cotaImgs.forEach(function(im){ setZoom(im, false); });
+  });
+
+  layoutCotas();
+  window.addEventListener('resize', layoutCotas);
+  requestAnimationFrame(function(){ document.getElementById('cotas').classList.add('ready'); });
+
+  optButtons.forEach(function(b){
+    b.addEventListener('click', function(){ activeOpt = b.getAttribute('data-opt'); applyStage(); });
+  });
+
+  // cores da cena 3D em cada tema (o 3D escuro é o original)
+  var SCENE_THEME = {
+    dark:  { bg: 0x0a0c0f, ground: 0x14171c },
+    light: { bg: 0xffffff, ground: 0xeef0f3 }
+  };
+  var themeBtn = document.getElementById('themeBtn');
+  var heroLogo = document.getElementById('heroLogo');
+  function applyTheme(){
+    document.documentElement.setAttribute('data-theme', theme);
+    var light = theme === 'light';
+    themeBtn.setAttribute('aria-pressed', String(light));
+    themeBtn.setAttribute('aria-label', light ? 'Tema escuro' : 'Tema claro');
+    themeBtn.title = light ? 'Tema escuro' : 'Tema claro';
+    var st = SCENE_THEME[theme];
+    scene.background = new THREE.Color(st.bg);
+    scene.fog = new THREE.Fog(st.bg, 60, 160);
+    matGround.color = new THREE.Color(st.ground);
+    heroLogo.src = light ? 'logo-infratech-claro.png' : 'logo-infratech-original.png';
+    Array.prototype.forEach.call(document.querySelectorAll('img.theme-img'), function(im){ im.src = themedSrc(im.getAttribute('src')); });
+    setCotas();
+  }
+  themeBtn.addEventListener('click', function(){
+    theme = theme === 'light' ? 'dark' : 'light';
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+    applyTheme();
+  });
+  applyTheme();
+  luzButtons.forEach(function(b){
+    b.addEventListener('click', function(){ activeLuz = b.getAttribute('data-luz') === '1'; applyStage(); });
+  });
+
+  /* ----------------------------- Vistas ----------------------------- */
+  // az: azimute (0 = frente, -90 = lado esquerdo), el: elevação, em graus.
+  // A distância da câmera é calculada para enquadrar FIT_MIN/FIT_MAX em qualquer tela.
+
+  // textos por versão: { sem: ..., com: ... } (sem / com os equipamentos de sonorização)
+  var VIEWS = [
+    {
+      id: 'frontal',
+      az: 0, el: 0, fov: 24,
+      kicker: '01 / 05 — Vista Frontal',
+      title: 'Cubo em Box Truss Q30',
+      desc: {
+        sem: 'Estrutura cúbica de 2,02 m em box truss Q30, com cubos de 5 faces nos 8 cantos e, em cada aresta, um segmento de 1,00 m e outro de 0,40 m. No topo, dois praticáveis 2 × 1 m formam a plataforma a 2,10 m.',
+        com: 'Com os equipamentos, três caixas point source ficam sobre o praticável do topo, na borda da frente, e chegam a 2,87 m de altura. O sub fica dentro do cubo, sobre o praticável inferior.'
+      },
+      specs: {
+        sem: ['Largura <b>2,02 m</b>', 'Altura <b>2,10 m</b>', 'Entre cubos <b>1,40 m</b>'],
+        com: ['Largura <b>2,02 m</b>', 'Altura total <b>2,87 m</b>', '<b>3</b> point source']
+      }
+    },
+    {
+      id: 'lateral',
+      az: -90, el: 0, fov: 24,
+      kicker: '02 / 05 — Vista Lateral',
+      title: { sem: 'Mesmo Quadro nos Quatro Lados', com: 'Point Source na Frente' },
+      desc: {
+        sem: 'De lado, a estrutura repete o quadro da frente: 2,02 m de profundidade, com segmentos de 1,00 m e 0,40 m entre os cubos. Por dentro, um praticável 2 × 1 m fica a 0,40 m do piso.',
+        com: 'De lado aparecem as caixas point source, com 0,77 m de altura, junto da frente da estrutura, e o sub apoiado no praticável inferior, do lado da frente.'
+      },
+      specs: {
+        sem: ['Profundidade <b>2,02 m</b>', 'Praticável interno a <b>0,40 m</b>', 'Topo a <b>2,10 m</b>'],
+        com: ['Profundidade <b>2,02 m</b>', 'Point source na <b>frente</b>', '<b>1</b> sub']
+      }
+    },
+    {
+      id: 'posterior',
+      az: -180, el: 0, fov: 24,
+      kicker: '03 / 05 — Vista Posterior',
+      title: 'Estrutura por Trás',
+      desc: {
+        sem: 'De trás, o quadro em box truss Q30 aparece inteiro, com os cubos nos cantos, os praticáveis do topo e o praticável interno.',
+        com: 'De trás, o quadro em box truss Q30 aparece inteiro e, ao fundo, as costas dos point source sobre o topo e o sub por dentro.'
+      },
+      specs: ['<b>8</b> cubos Q30', '<b>24</b> segmentos de box truss', '<b>3</b> praticáveis 2 × 1 m']
+    },
+    {
+      id: 'topo',
+      // -360 equivale a 0: a câmera continua o giro no mesmo sentido ao subir para o topo.
+      az: -360, el: 89.9, fov: 24,
+      kicker: '04 / 05 — Vista Topo',
+      title: 'Planta da Estrutura',
+      desc: {
+        sem: 'Em planta, o topo ocupa 2,04 × 2,02 m, coberto por dois praticáveis de 2 × 1 m lado a lado.',
+        com: 'Em planta, os três point source ficam na borda da frente do topo: o do centro voltado para a frente e os das pontas abertos para os lados.'
+      },
+      specs: {
+        sem: ['Planta <b>2,04 × 2,02 m</b>', '<b>2</b> praticáveis no topo', '<b>8</b> cubos Q30'],
+        com: ['Planta <b>2,04 × 2,02 m</b>', '<b>3</b> point source', 'Laterais <b>abertas</b>']
+      }
+    },
+    {
+      id: 'isometrica',
+      az: -405, el: 35.26, fov: 30,   // -405 equivale a -45
+      kicker: '05 / 05 — Vista Isométrica',
+      title: 'Visão de Conjunto',
+      desc: {
+        sem: 'Conjunto com 8 cubos Q30, 24 segmentos de box truss (12 de 1,00 m e 12 de 0,40 m), 3 praticáveis 2 × 1 m e 144 parafusos.',
+        com: 'A estrutura completa com os equipamentos de sonorização: 3 caixas point source no topo e 1 sub no interior do cubo.'
+      },
+      specs: {
+        sem: ['<b>8</b> cubos Q30', '<b>24</b> segmentos Q30', '<b>144</b> parafusos'],
+        com: ['<b>3</b> point source', '<b>1</b> sub', 'Altura <b>2,87 m</b>']
+      }
+    }
+  ];
+
+  var N = VIEWS.length;
+  var TOPO_IDX = VIEWS.findIndex(function(v){ return v.id === 'topo'; });
+
+  /* ------------------------- Enquadramento ------------------------- */
+
+  var DEG = Math.PI/180;
+  var fitCorners = [];
+  [0,1].forEach(function(i){ [0,1].forEach(function(j){ [0,1].forEach(function(k){
+    fitCorners.push([
+      (i ? FIT_MAX[0] : FIT_MIN[0]) - FIT_CENTER[0],
+      (j ? FIT_MAX[1] : FIT_MIN[1]) - FIT_CENTER[1],
+      (k ? FIT_MAX[2] : FIT_MIN[2]) - FIT_CENTER[2]
+    ]);
+  }); }); });
+
+  function viewDir(az, el){
+    var a = az*DEG, e = el*DEG;
+    return [Math.sin(a)*Math.cos(e), Math.sin(e), Math.cos(a)*Math.cos(e)];
+  }
+
+  // Distância para a câmera enquadrar a caixa de ajuste, dado o aspecto útil da tela.
+  function fitDistance(az, el, fov){
+    var aspect = window.innerWidth / window.innerHeight;
+    var d = viewDir(az, el);
+    var f = [-d[0], -d[1], -d[2]];
+    var r = [-f[2], 0, f[0]];                       // f × (0,1,0)
+    var rl = Math.hypot(r[0], r[2]) || 1; r = [r[0]/rl, 0, r[2]/rl];
+    var u = [r[1]*f[2]-r[2]*f[1], r[2]*f[0]-r[0]*f[2], r[0]*f[1]-r[1]*f[0]];
+    var hw = 0, hh = 0, hd = 0;
+    fitCorners.forEach(function(c){
+      hw = Math.max(hw, Math.abs(c[0]*r[0] + c[1]*r[1] + c[2]*r[2]));
+      hh = Math.max(hh, Math.abs(c[0]*u[0] + c[1]*u[1] + c[2]*u[2]));
+      hd = Math.max(hd, Math.abs(c[0]*d[0] + c[1]*d[1] + c[2]*d[2]));
+    });
+    var t = Math.tan(fov*DEG/2);
+    return Math.max(hh / t, hw / (t*aspect)) * 1.12 + hd;
+  }
+
+
+  /* ------------------------- Construção do HUD ------------------------- */
+
+  var hudEl = document.getElementById('hud');
+  var panelsEl = document.getElementById('panels');
+  var railEl = document.getElementById('railnav');
+  var track = document.getElementById('track');
+  var cotasEl = document.getElementById('cotas');
+  var legendEl = document.getElementById('legenda');
+  track.style.height = (N * 130) + 'vh';
+
+  function byOpt(x){ if (!(x && typeof x === 'object' && !Array.isArray(x))) return x; var k = activeLuz ? 'com' : 'sem'; return (k in x) ? x[k] : x[activeOpt]; }
+  var panelNodes = VIEWS.map(function(){
+    var el = document.createElement('div');
+    el.className = 'panel';
+    panelsEl.appendChild(el);
+    return el;
+  });
+  function renderPanels(){
+    VIEWS.forEach(function(v, i){
+      panelNodes[i].innerHTML =
+        '<p class="kicker">'+v.kicker+'</p>' +
+        '<h2>'+byOpt(v.title)+'</h2>' +
+        '<p>'+byOpt(v.desc)+'</p>' +
+        '<ul class="specs">'+byOpt(v.specs).map(function(s){ return '<li>'+s+'</li>'; }).join('')+'</ul>';
+    });
+  }
+  renderPanels();
+
+  function trackMax(){ return Math.max(1, track.offsetHeight - window.innerHeight); }
+
+  // Ordem da página: vistas cotadas → vistas 3D → legenda
+  var RAIL_ITEMS = ['Vistas Cotadas'].concat(VIEWS.map(function(v){ return v.kicker.split(' — ')[1]; }), ['Legenda']);
+  var railButtons = RAIL_ITEMS.map(function(label, i){
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.innerHTML = '<span class="rn-num">'+(i+1<10?'0'+(i+1):(i+1))+' — '+label+'</span><span class="rn-tick"></span>';
+    btn.addEventListener('click', function(){ goTo(i); });
+    railEl.appendChild(btn);
+    return btn;
+  });
+
+  var badgeEl = document.getElementById('badge');
+
+  /* ---------- etapas: posição na rolagem e setas ---------- */
+  // 0 = vistas cotadas, 1..N = vistas 3D, N+1 = legenda
+  function positionOf(i){
+    return i <= 0 ? 0 : i <= N ? track.offsetTop + ((i - 1) / (N - 1)) * trackMax() : legendEl.offsetTop;
+  }
+  var railIdxNow = 0, navTarget = null, navTimer = null;
+  var stepUp = document.getElementById('stepUp'), stepDown = document.getElementById('stepDown');
+  var upWrap = document.getElementById('stepUpWrap'), downWrap = document.getElementById('stepDownWrap');
+  function goTo(i){
+    i = Math.max(0, Math.min(N + 1, i));
+    navTarget = i;                          // cliques seguidos avançam a partir do destino, não da posição atual
+    clearTimeout(navTimer);
+    navTimer = setTimeout(function(){ navTarget = null; }, 900);
+    window.scrollTo({ top: positionOf(i), behavior: REDUCED_MOTION ? 'auto' : 'smooth' });
+  }
+  function currentStep(){ return navTarget !== null ? navTarget : railIdxNow; }
+  stepUp.addEventListener('click', function(){ goTo(currentStep() - 1); });
+  stepDown.addEventListener('click', function(){ goTo(currentStep() + 1); });
+  // as setas ficam logo acima e logo abaixo da navegação lateral
+  function placeSteppers(){
+    var r = railEl.getBoundingClientRect();
+    upWrap.style.top = Math.max(70, r.top - 52) + 'px';
+    downWrap.style.top = Math.min(window.innerHeight - 110, r.bottom + 14) + 'px';
+  }
+  placeSteppers();
+  window.addEventListener('resize', placeSteppers);
+  var progressFillEl = document.getElementById('progressFill');
+  var tCam = document.getElementById('tCam');
+  var tTarget = document.getElementById('tTarget');
+  var tFov = document.getElementById('tFov');
+
+  /* ------------------------------ Loop ------------------------------ */
+
+  function smootherstep(t){
+    t = Math.max(0, Math.min(1, t));
+    return t*t*t*(t*(t*6-15)+10);
+  }
+
+  // Giro com o mouse só clicando e arrastando sobre a estrutura; o mouse solto não mexe em nada.
+  // Ao soltar, a câmera fica onde o usuário deixou; ela volta para a posição da vista só quando a vista muda.
+  var mouseNX = 0, mouseNY = 0;   // giro pedido pelo arraste (-1 a 1)
+  var smoothNX = 0, smoothNY = 0; // giro suavizado usado pela câmera
+  var MOUSE_ORBIT_AZ = 30;  // graus de giro horizontal no máximo do arraste
+  var MOUSE_ORBIT_EL = 30;  // graus de giro vertical no máximo do arraste
+  var drag = null;          // { id, x, y, nx, ny } enquanto o botão está pressionado
+  function clamp1(v){ return Math.max(-1, Math.min(1, v)); }
+  canvas.addEventListener('pointerdown', function(e){
+    if (e.pointerType === 'touch' || e.button !== 0) return;   // no celular o dedo continua rolando a página
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, nx: mouseNX, ny: mouseNY };
+    canvas.classList.add('dragging');
+  });
+  canvas.addEventListener('pointermove', function(e){
+    if (!drag || e.pointerId !== drag.id) return;
+    // arrastar meia tela = giro máximo; arrastar para a direita gira a estrutura para a direita
+    mouseNX = clamp1(drag.nx - (e.clientX - drag.x) / (window.innerWidth * 0.5));
+    mouseNY = clamp1(drag.ny - (e.clientY - drag.y) / (window.innerHeight * 0.5));
+  });
+  function endDrag(e){
+    if (!drag || (e && e.pointerId !== drag.id)) return;
+    drag = null;
+    canvas.classList.remove('dragging');
+  }
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+  canvas.addEventListener('lostpointercapture', endDrag);
+
+  var lastViewIdx = -1;
+
+  // progresso dentro do trecho 3D (0 na entrada, 1 na saída)
+  function currentProgress(){
+    return Math.max(0, Math.min(1, -track.getBoundingClientRect().top / trackMax()));
+  }
+
+  function frame(){
+    var progress = currentProgress();
+    var vh = window.innerHeight;
+    var tr = track.getBoundingClientRect();
+    // em que parte da página estamos: cotas (antes do 3D), 3D ou legenda (depois)
+    var zone = legendEl.getBoundingClientRect().top < vh * 0.6 ? 'legend'
+      : tr.top > vh * 0.4 ? 'cotas' : '3d';
+    var inDoc = zone !== '3d';
+    hudEl.classList.toggle('in-doc', inDoc);
+
+    var continuous = progress * (N - 1);
+    var idx = Math.min(N - 2, Math.floor(continuous));
+    if (idx < 0) idx = 0;
+    var frac = smootherstep(continuous - idx);
+
+    var a = VIEWS[idx], b = VIEWS[Math.min(N-1, idx+1)];
+
+    var az = THREE.MathUtils.lerp(a.az, b.az, frac);
+    var el = THREE.MathUtils.lerp(a.el, b.el, frac);
+    var fov = THREE.MathUtils.lerp(a.fov, b.fov, frac);
+    var dist = THREE.MathUtils.lerp(
+      fitDistance(a.az, a.el, a.fov),
+      fitDistance(b.az, b.el, b.fov), frac);
+
+    {
+      var ease = REDUCED_MOTION ? 1 : (drag ? 0.25 : 0.08);   // segue o arraste de perto; volta devagar ao soltar
+      smoothNX += (mouseNX - smoothNX) * ease;
+      smoothNY += (mouseNY - smoothNY) * ease;
+      az += smoothNX * MOUSE_ORBIT_AZ;
+      el = Math.max(0, Math.min(89.9, el - smoothNY * MOUSE_ORBIT_EL)); // nunca abaixo do piso
+    }
+
+    var dir = viewDir(az, el);
+    var tx = FIT_CENTER[0], ty = FIT_CENTER[1], tz = FIT_CENTER[2];
+    var px = tx + dir[0]*dist, py = ty + dir[1]*dist, pz = tz + dir[2]*dist;
+
+    var w = window.innerWidth, h = window.innerHeight;
+    camera.position.set(px, py, pz);
+    camera.up.set(0,1,0);
+    camera.lookAt(tx, ty, tz);
+    camera.fov = fov;
+    camera.aspect = w/h;
+    camera.far = Math.max(400, dist*3);
+    camera.updateProjectionMatrix();
+
+    // grid / eixos só relevantes perto da vista de topo
+    var distFromTop = Math.abs(continuous - TOPO_IDX);
+    gridStuff.visible = distFromTop < 1.6;
+    gridStuff.children.forEach(function(child){
+      if (child.material) child.material.opacity = Math.max(0, 1 - distFromTop/1.4) * (child.type === 'GridHelper' ? 0.35 : 1);
+      child.visible = !child.userData.hide && (!child.userData.theme || child.userData.theme === theme);
+    });
+
+    // painéis: crossfade
+    var activeIdx = -1, best = 1e9;
+    for (var i=0;i<N;i++){
+      var d = Math.abs(continuous - i);
+      var visible = d < 0.5 && zone === '3d';
+      panelNodes[i].classList.toggle('on', visible);
+      if (d < best){ best = d; activeIdx = i; }
+    }
+    // mudou de vista: o giro feito com o mouse volta suavemente para a posição da vista
+    if (activeIdx !== lastViewIdx){
+      if (lastViewIdx !== -1 && !drag){ mouseNX = 0; mouseNY = 0; }
+      lastViewIdx = activeIdx;
+    }
+    var railIdx = zone === 'cotas' ? 0 : zone === 'legend' ? N + 1 : activeIdx + 1;
+    railIdxNow = railIdx;
+    railButtons.forEach(function(btn, i){ btn.classList.toggle('active', i === railIdx); });
+    var step = currentStep();
+    stepUp.disabled = step <= 0;
+    stepDown.disabled = step >= N + 1;
+    badgeEl.textContent = zone === 'cotas' ? 'Vistas Cotadas' : zone === 'legend' ? 'Legenda'
+      : 'Vista ' + (activeIdx+1<10?'0'+(activeIdx+1):(activeIdx+1)) + ' / ' + (N<10?'0'+N:N);
+
+    var docMax = Math.max(1, document.documentElement.scrollHeight - vh);
+    progressFillEl.style.width = (Math.min(1, window.scrollY / docMax) * 100).toFixed(2) + '%';
+
+    tCam.textContent = px.toFixed(1)+', '+py.toFixed(1)+', '+pz.toFixed(1);
+    tTarget.textContent = tx.toFixed(1)+', '+ty.toFixed(1)+', '+tz.toFixed(1);
+    tFov.textContent = fov.toFixed(0)+'°';
+
+    if (tr.bottom > 0 && tr.top < vh) renderer.render(scene, camera);   // só desenha com o 3D na tela
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+
+
+  /* ---------- Planilha .xlsx mínima (sem bibliotecas externas) ---------- */
+
+  var CRC_TABLE = (function(){
+    var t = new Uint32Array(256);
+    for (var n=0;n<256;n++){
+      var c = n;
+      for (var k=0;k<8;k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(bytes){
+    var c = 0xFFFFFFFF;
+    for (var i=0;i<bytes.length;i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  // Zip sem compressão (método "store") — suficiente para um .xlsx pequeno.
+  function zipStore(files){
+    var enc = new TextEncoder();
+    var parts = [], central = [], offset = 0;
+    function u16(v){ return [v & 0xFF, (v >>> 8) & 0xFF]; }
+    function u32(v){ return [v & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF]; }
+    var dosTime = 0, dosDate = ((2026-1980) << 9) | (1 << 5) | 1;
+    files.forEach(function(f){
+      var name = enc.encode(f.name);
+      var data = typeof f.data === 'string' ? enc.encode(f.data) : f.data;
+      var crc = crc32(data);
+      var local = [].concat(
+        u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(dosTime), u16(dosDate),
+        u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0));
+      parts.push(new Uint8Array(local), name, data);
+      central.push({ name: name, crc: crc, size: data.length, offset: offset });
+      offset += local.length + name.length + data.length;
+    });
+    var cdStart = offset, cdSize = 0;
+    central.forEach(function(c){
+      var h = [].concat(
+        u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(dosTime), u16(dosDate),
+        u32(c.crc), u32(c.size), u32(c.size), u16(c.name.length), u16(0), u16(0),
+        u16(0), u16(0), u32(0), u32(c.offset));
+      parts.push(new Uint8Array(h), c.name);
+      cdSize += h.length + c.name.length;
+    });
+    parts.push(new Uint8Array([].concat(
+      u32(0x06054b50), u16(0), u16(0), u16(central.length), u16(central.length),
+      u32(cdSize), u32(cdStart), u16(0))));
+    var total = parts.reduce(function(s, p){ return s + p.length; }, 0);
+    var out = new Uint8Array(total), o = 0;
+    parts.forEach(function(p){ out.set(p, o); o += p.length; });
+    return out;
+  }
+
+  function xmlEsc(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Planilha no mesmo visual da legenda da página: fundo escuro, cabeçalho em mono,
+  // grupos em laranja e o símbolo de cada componente como imagem.
+  // data: { kicker, title, subtitle, items:[{grp:label} | {name, spec, qty, img:{w,h,png}}] }
+  function buildLegendXlsx(data){
+    var EMU = 9525;                      // 1 px em EMU
+    var ITEM_PX = 42, HEAD_PX = 40, GRP_PX = 40;
+    var xmlRows = [], merges = [], pics = [];
+    function pt(px){ return (px * 0.75).toFixed(2); }
+    function strCell(ref, v, s){ return '<c r="'+ref+'" s="'+s+'" t="inlineStr"><is><t xml:space="preserve">'+xmlEsc(v)+'</t></is></c>'; }
+    function emptyCell(ref, s){ return '<c r="'+ref+'" s="'+s+'"/>'; }
+    function row(r, px, cells){ xmlRows.push('<row r="'+r+'"'+(px ? ' ht="'+pt(px)+'" customHeight="1"' : '')+'>'+cells.join('')+'</row>'); }
+
+    // A = margem | B símbolo | C componente | D especificação | E quant. | F = margem
+    row(1, 16, []);
+    row(2, 20, [strCell('B2', '——  ' + data.kicker, 1)]);
+    row(3, 40, [strCell('B3', data.title, 2)]);
+    row(4, 22, [strCell('B4', data.subtitle, 3)]);
+    row(5, 18, []);
+    row(6, HEAD_PX, [strCell('B6', 'SÍMBOLO', 4), strCell('C6', 'COMPONENTE', 5), strCell('D6', 'ESPECIFICAÇÃO', 5), strCell('E6', 'QUANT.', 6)]);
+
+    var r = 7;
+    data.items.forEach(function(it){
+      if (it.grp){
+        row(r, GRP_PX, [strCell('B'+r, it.grp.toUpperCase(), 7), emptyCell('C'+r, 8), emptyCell('D'+r, 8), emptyCell('E'+r, 9)]);
+        merges.push('B'+r+':E'+r);
+      } else {
+        row(r, ITEM_PX, [emptyCell('B'+r, 10), strCell('C'+r, it.name, 11), strCell('D'+r, it.spec, 12),
+          '<c r="E'+r+'" s="13"><v>'+it.qty+'</v></c>']);
+        if (it.img) pics.push({ row: r - 1, img: it.img, name: it.name + (it.spec && it.spec !== '—' ? ' ' + it.spec : '') });
+      }
+      r++;
+    });
+    var last = r - 1;
+    row(r, 30, [strCell('B'+r, 'LEGENDA', 14), strCell('E'+r, 'QUANTIDADES TOTAIS', 15)]);
+    var end = r;
+
+    var cols = '<cols>' +
+      '<col min="1" max="1" width="3.7" style="0" customWidth="1"/>' +
+      '<col min="2" max="2" width="22.7" style="0" customWidth="1"/>' +
+      '<col min="3" max="3" width="30.7" style="0" customWidth="1"/>' +
+      '<col min="4" max="4" width="22.7" style="0" customWidth="1"/>' +
+      '<col min="5" max="5" width="12.7" style="0" customWidth="1"/>' +
+      '<col min="6" max="6" width="3.7" style="0" customWidth="1"/>' +
+      '<col min="7" max="16384" width="9.140625" style="0"/>' +
+      '</cols>';
+
+    var sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<sheetPr><tabColor rgb="FFFF6A2B"/><pageSetUpPr fitToPage="1"/></sheetPr>' +
+      '<dimension ref="A1:F'+end+'"/>' +
+      '<sheetViews><sheetView showGridLines="0" workbookViewId="0"><pane ySplit="6" topLeftCell="A7" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A7" sqref="A7"/></sheetView></sheetViews>' +
+      '<sheetFormatPr defaultRowHeight="15"/>' + cols +
+      '<sheetData>' + xmlRows.join('') + '</sheetData>' +
+      (merges.length ? '<mergeCells count="'+merges.length+'">' + merges.map(function(m){ return '<mergeCell ref="'+m+'"/>'; }).join('') + '</mergeCells>' : '') +
+      '<printOptions horizontalCentered="1"/>' +
+      '<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>' +
+      '<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>' +
+      (pics.length ? '<drawing r:id="rId1"/>' : '') +
+      '</worksheet>';
+
+    var C = { bg:'FF0A0C0F', bg2:'FF12161C', line:'FF2A2D33', ink:'FFEEF1F4', dim:'FF8D97A3', faint:'FF5B6470', accent:'FFFF6A2B' };
+    function font(sz, color, name, bold){ return '<font>'+(bold?'<b/>':'')+'<sz val="'+sz+'"/><color rgb="'+color+'"/><name val="'+name+'"/></font>'; }
+    function fill(c){ return '<fill><patternFill patternType="solid"><fgColor rgb="'+c+'"/><bgColor indexed="64"/></patternFill></fill>'; }
+    function side(tag, on){ return on ? '<'+tag+' style="thin"><color rgb="'+C.line+'"/></'+tag+'>' : '<'+tag+'/>'; }
+    function border(l, rt, t, b){ return '<border>'+side('left',l)+side('right',rt)+side('top',t)+side('bottom',b)+'<diagonal/></border>'; }
+    function xf(fontId, fillId, borderId, al, numFmt){
+      return '<xf numFmtId="'+(numFmt||0)+'" fontId="'+fontId+'" fillId="'+fillId+'" borderId="'+borderId+'" xfId="0" applyFont="1" applyFill="1" applyBorder="1"' +
+        (numFmt ? ' applyNumberFormat="1"' : '') + (al ? ' applyAlignment="1"><alignment '+al+'/></xf>' : '/>');
+    }
+    var fonts = [
+      font(11, C.ink, 'Calibri'),               // 0 texto
+      font(9, C.accent, 'Consolas'),            // 1 kicker
+      font(22, C.ink, 'Calibri', true),         // 2 título
+      font(11, C.dim, 'Calibri'),               // 3 subtítulo
+      font(8, C.faint, 'Consolas'),             // 4 cabeçalho
+      font(8, C.accent, 'Consolas'),            // 5 grupo
+      font(10, C.dim, 'Consolas'),              // 6 especificação
+      font(10, C.ink, 'Consolas', true),        // 7 quantidade
+      font(8, C.dim, 'Consolas'),               // 8 rodapé esq.
+      font(8, C.faint, 'Consolas')              // 9 rodapé dir.
+    ];
+    var fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>', fill(C.bg), fill(C.bg2)];
+    var borders = [
+      border(0,0,0,0),  // 0
+      border(0,0,0,1),  // 1 linha embaixo
+      border(1,0,0,1),  // 2 + esquerda
+      border(0,1,0,1),  // 3 + direita
+      border(0,0,1,1),  // 4 cabeçalho meio
+      border(1,0,1,1),  // 5 cabeçalho início
+      border(0,1,1,1)   // 6 cabeçalho fim
+    ];
+    var L = 'horizontal="left" vertical="center" indent="1"', R = 'horizontal="right" vertical="center" indent="1"';
+    var xfs = [
+      xf(0, 2, 0),                                  // 0 fundo da planilha
+      xf(1, 2, 0, 'vertical="center"'),             // 1 kicker
+      xf(2, 2, 0, 'vertical="center"'),             // 2 título
+      xf(3, 2, 0, 'vertical="center"'),             // 3 subtítulo
+      xf(4, 3, 5, L), xf(4, 3, 4, L), xf(4, 3, 6, R),   // 4-6 cabeçalho
+      xf(5, 3, 2, 'horizontal="left" vertical="bottom" indent="1"'), xf(5, 3, 1), xf(5, 3, 3),   // 7-9 grupo
+      xf(0, 3, 2, L),                               // 10 símbolo
+      xf(0, 3, 1, L),                               // 11 componente
+      xf(6, 3, 1, L),                               // 12 especificação
+      xf(7, 3, 3, R, 1),                            // 13 quantidade
+      xf(8, 2, 0, 'vertical="center"'),             // 14 rodapé esq.
+      xf(9, 2, 0, 'horizontal="right" vertical="center"')  // 15 rodapé dir.
+    ];
+    var styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<fonts count="'+fonts.length+'">' + fonts.join('') + '</fonts>' +
+      '<fills count="'+fills.length+'">' + fills.join('') + '</fills>' +
+      '<borders count="'+borders.length+'">' + borders.join('') + '</borders>' +
+      '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="2" borderId="0"/></cellStyleXfs>' +
+      '<cellXfs count="'+xfs.length+'">' + xfs.join('') + '</cellXfs>' +
+      '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+      '</styleSheet>';
+
+    // símbolos: cada um no tamanho em que aparece na página, centrado na altura da linha
+    var drawing = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      pics.map(function(p, i){
+        var cx = Math.round(p.img.w * EMU), cy = Math.round(p.img.h * EMU);
+        var rowOff = Math.round(Math.max(0, (ITEM_PX - p.img.h) / 2) * EMU);
+        return '<xdr:oneCellAnchor><xdr:from><xdr:col>1</xdr:col><xdr:colOff>'+(14*EMU)+'</xdr:colOff><xdr:row>'+p.row+'</xdr:row><xdr:rowOff>'+rowOff+'</xdr:rowOff></xdr:from>' +
+          '<xdr:ext cx="'+cx+'" cy="'+cy+'"/>' +
+          '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="'+(i+2)+'" name="Símbolo '+(i+1)+'" descr="'+xmlEsc(p.name)+'"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>' +
+          '<xdr:blipFill><a:blip r:embed="rId'+(i+1)+'"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>' +
+          '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic>' +
+          '<xdr:clientData/></xdr:oneCellAnchor>';
+      }).join('') + '</xdr:wsDr>';
+
+    var REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/';
+    var files = [
+      { name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+        '<Default Extension="xml" ContentType="application/xml"/>' +
+        '<Default Extension="png" ContentType="image/png"/>' +
+        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+        '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+        '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+        (pics.length ? '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' : '') +
+        '</Types>' },
+      { name: '_rels/.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="'+REL+'officeDocument" Target="xl/workbook.xml"/>' +
+        '</Relationships>' },
+      { name: 'xl/workbook.xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+        '<sheets><sheet name="Legenda" sheetId="1" r:id="rId1"/></sheets>' +
+        '<definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">Legenda!$A$1:$F$'+end+'</definedName></definedNames>' +
+        '<calcPr calcId="191029"/></workbook>' },
+      { name: 'xl/_rels/workbook.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="'+REL+'worksheet" Target="worksheets/sheet1.xml"/>' +
+        '<Relationship Id="rId2" Type="'+REL+'styles" Target="styles.xml"/>' +
+        '</Relationships>' },
+      { name: 'xl/styles.xml', data: styles },
+      { name: 'xl/worksheets/sheet1.xml', data: sheet }
+    ];
+    if (pics.length){
+      files.push({ name: 'xl/worksheets/_rels/sheet1.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="'+REL+'drawing" Target="../drawings/drawing1.xml"/></Relationships>' });
+      files.push({ name: 'xl/drawings/drawing1.xml', data: drawing });
+      files.push({ name: 'xl/drawings/_rels/drawing1.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        pics.map(function(p, i){ return '<Relationship Id="rId'+(i+1)+'" Type="'+REL+'image" Target="../media/simbolo'+(i+1)+'.png"/>'; }).join('') +
+        '</Relationships>' });
+      pics.forEach(function(p, i){ files.push({ name: 'xl/media/simbolo'+(i+1)+'.png', data: p.img.png }); });
+    }
+    return zipStore(files);
+  }
+
+  /* ---------- Botão: exportar legenda ---------- */
+
+  // Desenha o símbolo SVG da legenda num PNG (4× para ficar nítido no Excel)
+  function svgToPng(svg){
+    var w = parseFloat(svg.getAttribute('width')) || 20, h = parseFloat(svg.getAttribute('height')) || 20, S = 4;
+    var clone = svg.cloneNode(true);
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    clone.setAttribute('width', w * S); clone.setAttribute('height', h * S);
+    var src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+    return new Promise(function(resolve){
+      var img = new Image();
+      img.onload = function(){
+        try {
+          var cv = document.createElement('canvas');
+          cv.width = Math.round(w * S); cv.height = Math.round(h * S);
+          cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+          var b64 = cv.toDataURL('image/png').split(',')[1], bin = atob(b64), png = new Uint8Array(bin.length);
+          for (var i = 0; i < bin.length; i++) png[i] = bin.charCodeAt(i);
+          resolve({ w: w, h: h, png: png });
+        } catch (e){ resolve(null); }   // sem símbolo, mas a planilha sai do mesmo jeito
+      };
+      img.onerror = function(){ resolve(null); };
+      img.src = src;
+    });
+  }
+
+  function legendData(){
+    var items = [], jobs = [];
+    Array.prototype.forEach.call(document.querySelectorAll('.legend-table tbody:not([hidden]) tr'), function(tr){
+      if (tr.classList.contains('grp')){ items.push({ grp: tr.textContent.trim() }); return; }
+      var it = {
+        name: tr.querySelector('.c-name').firstChild.textContent.trim(),
+        spec: tr.querySelector('td.c-spec').textContent.trim(),
+        qty: parseInt(tr.querySelector('.c-qty').textContent, 10) || 0
+      };
+      items.push(it);
+      var svg = tr.querySelector('.c-sym svg');
+      if (svg) jobs.push(svgToPng(svg).then(function(img){ it.img = img; }));
+    });
+    var head = document.querySelector('#legenda .cotas-head');
+    var project = (document.getElementById('heroTitle') || {}).textContent || '';
+    return Promise.all(jobs).then(function(){
+      return {
+        kicker: (head.querySelector('.kicker').textContent.trim() + (project ? '  ·  ' + project.trim() : '')).toUpperCase(),
+        title: head.querySelector('h2').textContent.trim(),
+        subtitle: head.querySelector('p:not(.kicker)').textContent.trim(),
+        items: items
+      };
+    });
+  }
+
+  // Botões de download de arquivos publicados junto com a página (PDF e DWG)
+  (function setupDownloads(){
+    var status = document.getElementById('exportStatus');
+    var capPromise = (window.claude && typeof window.claude.use === 'function')
+      ? window.claude.use('downloads').catch(function(){ return null; })
+      : Promise.resolve(null);
+    function directDownload(blob, name){
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = name; a.rel = 'noopener'; a.style.display = 'none';
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1500);
+    }
+    // botões opcionais (DWG): só aparecem se o arquivo estiver publicado junto com a página
+    Array.prototype.forEach.call(document.querySelectorAll('.btn-dl[data-optional]'), function(btn){
+      fetch(btn.getAttribute('data-file'), { method: 'HEAD', cache: 'no-store' })
+        .then(function(res){ if (res.ok) btn.hidden = false; })
+        .catch(function(){});
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.btn-dl'), function(btn){
+      btn.addEventListener('click', function(){
+        if (btn.getAttribute('aria-busy') === 'true') return;
+        var file = btn.getAttribute('data-file'), name = btn.getAttribute('data-name'), mime = btn.getAttribute('data-mime');
+        btn.setAttribute('aria-busy', 'true');
+        // sempre a versão mais nova (sem reaproveitar o cache do navegador)
+        fetch(file + '?v=' + Date.now(), { cache: 'no-store' }).then(function(res){
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.blob();
+        }).then(function(b){
+          var blob = new Blob([b], { type: mime });
+          return capPromise.then(function(downloads){
+            if (!downloads){ directDownload(blob, name); return; }
+            return downloads.save({ filename: name, data: blob }).catch(function(err){
+              var code = err && err.code;
+              if (code === 'declined' || code === 'rate_limited') return;
+              directDownload(blob, name);
+            });
+          });
+        }).catch(function(){
+          if (status) status.textContent = 'Não foi possível baixar o arquivo.';
+        }).then(function(){ btn.removeAttribute('aria-busy'); });
+      });
+    });
+  })();
+
+  (function setupExport(){
+    var btn = document.getElementById('btnExport');
+    var status = document.getElementById('exportStatus');
+    function fileName(){ return 'Natal Ibirapuera 2026 - Estrutura Sonorização v00 - Legenda.xlsx'; }
+    var MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+    // Dentro do Claude: usa a capacidade "downloads". Em qualquer outro site
+    // (GitHub Pages, Netlify, arquivo local) window.claude não existe → download direto.
+    var capPromise = (window.claude && typeof window.claude.use === 'function')
+      ? window.claude.use('downloads').catch(function(){ return null; })
+      : Promise.resolve(null);
+
+    function directDownload(blob){
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = fileName();
+      a.rel = 'noopener';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1500);
+    }
+
+    btn.addEventListener('click', function(){
+      if (btn.getAttribute('aria-busy') === 'true') return;
+      btn.setAttribute('aria-busy', 'true');
+      status.textContent = 'Gerando planilha…';
+      legendData().then(function(data){
+        return new Blob([buildLegendXlsx(data)], { type: MIME });
+      }).then(function(blob){
+        return capPromise.then(function(downloads){
+          if (!downloads){ directDownload(blob); status.textContent = 'Planilha exportada.'; return; }
+          return downloads.save({ filename: fileName(), data: blob })
+            .then(function(){ status.textContent = 'Planilha exportada.'; })
+            .catch(function(err){
+              var code = err && err.code;
+              if (code === 'declined') status.textContent = 'Exportação cancelada.';
+              else if (code === 'rate_limited') status.textContent = 'Aguarde um instante e tente de novo.';
+              else { directDownload(blob); status.textContent = 'Planilha exportada.'; }
+            });
+        });
+      }).catch(function(){
+        status.textContent = 'Não foi possível exportar a planilha.';
+      }).then(function(){ btn.removeAttribute('aria-busy'); });
+    });
+  })();
+})();
+</script>
+
+</body></html>
